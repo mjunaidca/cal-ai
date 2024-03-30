@@ -38,7 +38,7 @@ app = FastAPI(
     docs_url="/api/docs"
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 # Call Auth Server and get str user_id owith 200 or an error message in JSON - use httpx 
 def get_current_user_dep(token: Annotated[str | None, Depends(oauth2_scheme)]):
@@ -58,7 +58,7 @@ def get_current_user_dep(token: Annotated[str | None, Depends(oauth2_scheme)]):
 
 
 # Call Auth Server to login and get token using /token endpoint - use httpx
-@app.post("/api/token")
+@app.post("/api/auth/login")
 def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     # Send a POST request to the Auth Server's /api/oauth/login endpoint with form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
     url = f"{AUTH_SERVER_URL}/api/oauth/login"
@@ -72,9 +72,43 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
         return response.json()
     
     raise HTTPException(status_code=response.status_code, detail=response.json().get('detail'))
+
+# Call Auth Server to get token using /token endpoint - use httpx
+@app.post("/api/auth/token")
+def tokens_manager_oauth_codeflow(
+    grant_type: str = Query(...),
+    refresh_token: str = Query(None),
+    code: str = Query(None),
+):
+    # Send a POST request to the Auth Server's /api/oauth/token endpoint with grant_type, refresh_token, code, and token
+    url = f"{AUTH_SERVER_URL}/api/oauth/token"
+    data = {
+        "grant_type": grant_type,
+        "refresh_token": refresh_token,
+        "code": code
+    }
+    # headers = {"Authorization": f"Bearer {token}"}
+
+    response = httpx.post(url, data=data)
+
+    if response.status_code == 200:
+        return response.json()
     
+    raise HTTPException(status_code=response.status_code, detail=response.json().get('detail'))
 
+# Get temp Code against user_id to implentent OAuth2 for Custom Gpt
+@app.get("/api/auth/temp-code")
+def get_temp_code(user_id: UUID):
+    # Send a GET request to the Auth Server's /api/oauth/temp-code endpoint with user_id
+    url = f"{AUTH_SERVER_URL}/api/oauth/temp-code?user_id={user_id}"
+    # headers = {"Authorization": f"Bearer {user_id}"}
 
+    response = httpx.get(url)
+
+    if response.status_code == 200:
+        return response.json()
+    
+    raise HTTPException(status_code=response.status_code, detail=response.json().get('detail'))
 
 @app.get("/")
 def read_root():
@@ -82,7 +116,7 @@ def read_root():
 
 # Get ALL TODOS
 @app.get("/api/todos", response_model=PaginatedTodos, tags=["TODO Crud"])
-def get_todos(db: Session = Depends(get_db), user_id = Depends(get_current_user_dep), page: int = Query(1, description="Page number", ge=1),
+def get_todos(db:Annotated[Session, Depends(get_db)], user_id: Annotated[ UUID, Depends(get_current_user_dep)], page: int = Query(1, description="Page number", ge=1),
               per_page: int = Query(10, description="Items per page", ge=1, le=100)):
     """
     Get ALL TODOS
@@ -118,7 +152,7 @@ def get_todos(db: Session = Depends(get_db), user_id = Depends(get_current_user_
 
 # Get a Single TODO item
 @app.get("/api/todos/{todo_id}", response_model=TODOResponse, tags=["TODO Crud"])
-def get_todo_by_id(todo_id: UUID, db: Session = Depends(get_db), user_id: UUID = Depends(get_current_user_dep)):
+def get_todo_by_id(todo_id: UUID, db:Annotated[Session, Depends(get_db)], user_id: Annotated[ UUID, Depends(get_current_user_dep)]):
     """
     Get a Single TODO item
 
@@ -143,7 +177,7 @@ def get_todo_by_id(todo_id: UUID, db: Session = Depends(get_db), user_id: UUID =
 
 # Create a new TODO item
 @app.post("/api/todos", response_model=TODOResponse, tags=["TODO Crud"], status_code=201)
-def create_todo(todo: TODOBase, db: Session = Depends(get_db), user_id: UUID = Depends(get_current_user_dep)):
+def create_todo(todo: TODOBase, db:Annotated[Session, Depends(get_db)], user_id: Annotated[ UUID, Depends(get_current_user_dep)]):
     """
     Create a new TODO item
 
@@ -163,7 +197,7 @@ def create_todo(todo: TODOBase, db: Session = Depends(get_db), user_id: UUID = D
 
 # Update a Single TODO item Completly
 @app.put("/api/todos/{todo_id}", response_model=TODOResponse, tags=["TODO Crud"])
-def update_todo(todo_id: UUID, updated_todo: TODOBase, db: Session = Depends(get_db), user_id: UUID = Depends(get_current_user_dep)):
+def update_todo(todo_id: UUID, updated_todo: TODOBase, db:Annotated[Session, Depends(get_db)], user_id: Annotated[ UUID, Depends(get_current_user_dep)]):
     """
     Update a Single TODO item Completly
 
@@ -185,7 +219,7 @@ def update_todo(todo_id: UUID, updated_todo: TODOBase, db: Session = Depends(get
 
 # Update a Single TODO item partially
 @app.patch("/api/todos/{todo_id}", response_model=TODOResponse, tags=["TODO Crud"])
-def update_todo_partial(todo_id: UUID, updated_todo: TODOBase, db: Session = Depends(get_db), user_id: UUID = Depends(get_current_user_dep)):
+def update_todo_partial(todo_id: UUID, updated_todo: TODOBase, db:Annotated[Session, Depends(get_db)], user_id: Annotated[ UUID, Depends(get_current_user_dep)]):
     """
     Partially Update a Single TODO item
 
@@ -207,7 +241,7 @@ def update_todo_partial(todo_id: UUID, updated_todo: TODOBase, db: Session = Dep
 
 # DELETE a single TODO item
 @app.delete("/api/todos/{todo_id}", tags=["TODO Crud"])
-def delete_todo(todo_id: UUID, db: Session = Depends(get_db), user_id: UUID = Depends(get_current_user_dep)):
+def delete_todo(todo_id: UUID, db:Annotated[Session, Depends(get_db)], user_id: Annotated[ UUID, Depends(get_current_user_dep)]):
     """
     Delete a Single TODO item
 

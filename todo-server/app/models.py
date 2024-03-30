@@ -8,7 +8,7 @@ class TODOBase(SQLModel):
     Represents a TODO in the database.
     """
     title: str = Field(index=True)
-    description: str = Field(default=None, nullable=True)  # Made description optional
+    description: str | None = Field(default=None, nullable=True)  # Made description optional
     completed: bool = Field(default=False)
 
 class TODO(TODOBase, table=True):

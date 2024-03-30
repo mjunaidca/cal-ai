@@ -81,7 +81,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db:  Annotated[Session, Depends(get_db)]):
     """
     Get the current authenticated user based on the provided token.
 
@@ -117,7 +117,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
 
 
 async def service_login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db:  Annotated[Session, Depends(get_db)]
 ):
     """
     Authenticates the user and generates an access token.
@@ -157,7 +157,7 @@ async def service_login_for_access_token(
 
 
 async def service_signup_users(
-    user_data: RegisterUser, db: Session = Depends(get_db)
+    user_data: RegisterUser, db:  Annotated[Session, Depends(get_db)]
 ):
     """
     Service function to sign up users.

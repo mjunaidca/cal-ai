@@ -40,7 +40,7 @@ app = FastAPI(
 
 # user_auth.py web layer routes
 @app.post("/api/oauth/login", response_model=LoginResonse, tags=["OAuth2 Authentication"])
-async def login_authorization(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):
+async def login_authorization(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annotated[Session, Depends(get_db)]):
     """
     Authorization URL for OAuth2
 
@@ -101,7 +101,7 @@ async def get_temp_code(user_id: UUID):
 
 @app.post("/api/oauth/signup", response_model=UserOutput, tags=["OAuth2 Authentication"])
 async def signup_users(
-    user_data: RegisterUser, db: Session = Depends(get_db)
+    user_data: RegisterUser, db: Annotated[Session, Depends(get_db)]
 ):
     """
     Signup Users
@@ -117,7 +117,7 @@ async def signup_users(
 
 # Endpoint that takes token and returns user data
 @app.get("/api/users/me", tags=["User"])
-async def read_users_me(user_id: UUID = Depends(get_current_user_dep)):
+async def read_users_me(user_id: Annotated[UUID, Depends(get_current_user_dep)]):
     """
     Get Current User
 
